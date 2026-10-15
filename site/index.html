@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HawkSelect</title>
+  <meta name="description" content="Upload a tabular dataset and let Harris Hawks Optimization find the features that matter. Runs entirely in your browser.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/polish.css">
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"></span>Hawk<span>Select</span></a>
+      <nav>
+        <a href="#analyze">Analyzer</a>
+        <a href="#how">How it works</a>
+        <a href="research.html">Research</a>
+      </nav>
+      <a class="btn primary small nav-cta" href="#analyze">Analyze data</a>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero hero-app" id="hero">
+      <canvas aria-label="Animated Harris hawks hunting the best solution on a fitness landscape"></canvas>
+
+      <div class="hero-copy">
+        <p class="pill-label"><span class="pulse-dot"></span>Bio-inspired feature selection</p>
+        <h1>Find the features<br>that <em class="serif">actually matter.</em></h1>
+        <p class="lede">
+          Drop in a CSV. A flock of digital hawks hunts through every combination of your columns
+          and comes back with the smallest set that still predicts your target, plus a plain-English
+          report on what to keep, what to drop, and why.
+        </p>
+        <div class="cta">
+          <a class="btn primary" href="#analyze">Analyze a dataset <span class="arrow" aria-hidden="true">→</span></a>
+          <a class="btn ghost" href="#how">How it works</a>
+        </div>
+        <ul class="trust-row">
+          <li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 9V7a4 4 0 1 1 8 0v2m-9 0h10a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1Z"/></svg>Private: runs in your browser</li>
+          <li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11 2 4 11h5l-1 7 7-9h-5l1-7Z"/></svg>Results in seconds</li>
+          <li><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h12v12H4zM4 9h12M9 4v12"/></svg>Any CSV with a category to predict</li>
+        </ul>
+      </div>
+
+      <aside class="hud" aria-live="off">
+        <div class="hud-title"><span class="pulse-dot"></span>Live hunt <span class="muted">· demo landscape</span></div>
+        <div class="hud-row"><span class="label">Iteration</span><span class="mono" data-hud="iter">0 / 0</span></div>
+        <div class="hud-row"><span class="label">Max escaping energy |E|</span><span class="mono" data-hud="energy">2.00</span></div>
+        <div class="energy"><div class="energy-fill" data-hud="energy-bar"></div><div class="energy-tick" title="|E| = 1"></div></div>
+        <div class="hud-row"><span class="label">Phase</span><span class="phase" data-hud="phase" data-phase="explore">Exploration</span></div>
+        <div class="hud-row"><span class="label">Rabbit fitness</span><span class="mono" data-hud="best">–</span></div>
+        <canvas class="spark" data-hud="spark"></canvas>
+        <ul class="legend" data-hud="legend"></ul>
+        <div class="hud-actions">
+          <button class="btn small" data-act="pause">Pause</button>
+          <button class="btn small" data-act="restart">Restart</button>
+        </div>
+      </aside>
+    </section>
+
+    <section class="stats-strip" aria-label="At a glance" data-reveal>
+      <div><strong>2<sup>n</sup></strong><span>feature subsets, searched without trying them all</span></div>
+      <div><strong>6</strong><span>hunting strategies, from scouting to rapid dives</span></div>
+      <div><strong>0&nbsp;bytes</strong><span>uploaded: your file never leaves the tab</span></div>
+      <div><strong>~30&nbsp;s</strong><span>for 3,000 rows × 40 columns on a laptop</span></div>
+    </section>
+
+    <section class="section app" id="analyze">
+      <header class="section-head" data-reveal>
+        <p class="kicker">The analyzer</p>
+        <h2>From raw CSV to a <em class="serif">clear answer.</em></h2>
+        <p class="section-lede">Four steps: load your data, check what we found in it, watch the flock hunt, then read what to keep and why.</p>
+      </header>
+      <div class="app-head">
+        <h2 class="sr-only">Analyzer</h2>
+        <ol class="stepper" aria-label="Progress">
+          <li data-step-tab="1" class="current"><span>1</span>Data</li>
+          <li data-step-tab="2"><span>2</span>Configure</li>
+          <li data-step-tab="3"><span>3</span>Hunt</li>
+          <li data-step-tab="4"><span>4</span>Insights</li>
+        </ol>
+      </div>
+
+      <!-- STEP 1: data -->
+      <div class="step" data-step="1">
+        <div class="load-grid">
+          <label class="dropzone" data-el="drop" tabindex="0">
+            <input type="file" accept=".csv,.tsv,.txt,text/csv" data-el="file" hidden>
+            <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 31V11m0 0-8 8m8-8 8 8M10 30v5a4 4 0 0 0 4 4h20a4 4 0 0 0 4-4v-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <strong>Drop a CSV file here</strong>
+            <span>or <u>browse your computer</u></span>
+            <small>Tabular data with one column to predict (a category). Up to 15 MB; large files are sampled to 20,000 rows.</small>
+          </label>
+          <div class="samples">
+            <h3>No data handy? Try a sample</h3>
+            <div class="sample-list" data-el="samples"></div>
+          </div>
+        </div>
+        <p class="error" data-el="load-error" hidden></p>
+      </div>
+
+      <!-- STEP 2: configure -->
+      <div class="step" data-step="2" hidden>
+        <div class="file-bar">
+          <div><span class="label">Dataset</span><strong data-el="file-name"></strong></div>
+          <button class="btn small" data-act="change-file">Change file</button>
+        </div>
+        <div class="kpis" data-el="kpis"></div>
+
+        <div class="config-grid">
+          <div class="panel">
+            <div class="panel-head"><h3>What should we predict?</h3><span class="hint">the target column</span></div>
+            <select class="input" data-el="target"></select>
+            <p class="hint target-hint" data-el="target-hint"></p>
+            <p class="error" data-el="target-error" hidden></p>
+            <div class="class-bars" data-el="classes"></div>
+          </div>
+
+          <div class="panel settings">
+            <div class="panel-head"><h3>Hunt settings</h3><button class="link-btn" data-act="defaults">Reset</button></div>
+            <label class="setting">
+              <span>Flock size <output data-o="hawks"></output></span>
+              <input type="range" name="hawks" min="6" max="40" step="1" value="16">
+              <small>More hawks explore more combinations per round.</small>
+            </label>
+            <label class="setting">
+              <span>Hunting rounds <output data-o="iterations"></output></span>
+              <input type="range" name="iterations" min="10" max="150" step="5" value="50">
+              <small>More rounds give the flock time to close in.</small>
+            </label>
+            <label class="setting">
+              <span>Priority <output data-o="alpha"></output></span>
+              <input type="range" name="alpha" min="0.9" max="0.999" step="0.001" value="0.99">
+              <small class="ends"><span>fewer features</span><span>higher accuracy</span></small>
+            </label>
+            <div class="setting-row">
+              <label class="setting">
+                <span>Bit rule</span>
+                <select class="input" name="transfer">
+                  <option value="s">S-shaped (explores more)</option>
+                  <option value="v">V-shaped (settles faster)</option>
+                </select>
+              </label>
+              <label class="setting">
+                <span>Neighbours (KNN k)</span>
+                <select class="input" name="k"><option>3</option><option selected>5</option><option>7</option><option>9</option></select>
+              </label>
+              <label class="setting">
+                <span>Seed</span>
+                <input class="input" type="number" name="seed" value="7" min="0" step="1">
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Columns</h3><span class="hint" data-el="col-summary"></span></div>
+          <div class="col-table-wrap"><table class="col-table" data-el="columns"></table></div>
+        </div>
+
+        <div class="run-bar">
+          <p class="hint" data-el="estimate"></p>
+          <button class="btn primary big" data-act="run">Release the hawks</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: hunt -->
+      <div class="step" data-step="3" hidden>
+        <div class="hunt-top">
+          <div class="phases" data-el="phases">
+            <span data-phase="baseline">Measuring baselines</span>
+            <span data-phase="hho">Hunting</span>
+            <span data-phase="final">Testing on held-out data</span>
+          </div>
+          <div class="hunt-actions">
+            <button class="btn small" data-act="skip">Skip to results</button>
+            <button class="btn small" data-act="cancel">Cancel</button>
+          </div>
+        </div>
+        <div class="progress"><i data-el="progress"></i></div>
+
+        <div class="hunt-grid">
+          <div class="panel">
+            <div class="panel-head"><h3>The flock</h3><span class="hint">each row is a hawk, each column a feature · lit = feature in use · top row = best so far</span></div>
+            <div class="chart-host"><canvas class="flock" data-el="flock"></canvas></div>
+          </div>
+          <aside class="panel hunt-side">
+            <div class="stat"><span class="label">Round</span><strong class="mono" data-el="h-iter">–</strong></div>
+            <div class="stat"><span class="label">Best validation accuracy</span><strong class="mono" data-el="h-acc">–</strong></div>
+            <div class="stat"><span class="label">Features in best</span><strong class="mono" data-el="h-nsel">–</strong></div>
+            <div class="stat"><span class="label">Models evaluated</span><strong class="mono" data-el="h-evals">–</strong></div>
+            <div class="stat"><span class="label">Escaping energy</span><span class="energy mini"><span class="energy-fill" data-el="h-energy"></span></span></div>
+            <canvas class="mini-chart" data-el="h-curve" aria-label="Best fitness so far"></canvas>
+            <ul class="legend" data-el="h-legend"></ul>
+          </aside>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Current best subset</h3><span class="hint" data-el="h-baseline"></span></div>
+          <div class="chips" data-el="h-chips"></div>
+        </div>
+      </div>
+
+      <!-- STEP 4: insights -->
+      <div class="step" data-step="4" hidden>
+        <div class="report" data-el="report"></div>
+        <div class="run-bar">
+          <button class="btn" data-act="new">Analyze another dataset</button>
+          <button class="btn primary" data-act="retune">Tune &amp; run again</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section how" id="how">
+      <header class="section-head" data-reveal>
+        <p class="kicker">How it works</p>
+        <h2>A hunting party, <em class="serif">not a brute-force search.</em></h2>
+        <p class="section-lede">Checking every subset of 40 columns would take a trillion model fits. The hawks get there in about a thousand.</p>
+      </header>
+      <div class="how-grid">
+        <div class="how-card" data-reveal><span class="how-num">01</span><h3>Every hawk is a guess</h3>
+          <p>Each hawk carries one candidate subset of your columns: a row of on/off switches, one per feature.</p></div>
+        <div class="how-card" data-reveal><span class="how-num">02</span><h3>Guesses are scored</h3>
+          <p>A k-nearest-neighbour classifier is trained on just those columns and tested on data it hasn't seen. Fewer columns earn a small bonus.</p></div>
+        <div class="how-card" data-reveal><span class="how-num">03</span><h3>The flock closes in</h3>
+          <p>The best subset is the "rabbit". Early on hawks scout widely; as the rabbit's energy drains they besiege it and dive, refining the best answer.</p></div>
+        <div class="how-card" data-reveal><span class="how-num">04</span><h3>A fair final test</h3>
+          <p>The winning subset is checked on a held-out 20% of your rows and compared with using every column and with a simple statistical filter.</p></div>
+      </div>
+      <p class="more">Want the theory and our NSL-KDD intrusion-detection study? <a class="link" href="research.html">Read the research →</a></p>
+    </section>
+
+    <section class="cta-band" data-reveal>
+      <div class="cta-glow" aria-hidden="true"></div>
+      <h2>Ready to cut the <em class="serif">noise?</em></h2>
+      <p>Bring a CSV, or start with one of ours. It takes about a minute.</p>
+      <a class="btn primary" href="#analyze">Start analyzing <span class="arrow" aria-hidden="true">→</span></a>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"></span>Hawk<span>Select</span></a>
+      <p>A bio-inspired algorithms course project. Built on Harris Hawks Optimization (Heidari et&nbsp;al., 2019).</p>
+      <nav><a href="#analyze">Analyzer</a><a href="#how">How it works</a><a href="research.html">Research</a></nav>
+    </div>
+    <p class="fine">No tracking. No uploads. Everything runs on your device.</p>
+  </footer>
+
+  <script type="module">
+    import { initHero } from "./js/hero.js";
+    import { initApp } from "./js/app/app.js";
+    initHero(document.getElementById("hero"));
+    import { initPolish } from "./js/polish.js";
+    initApp(document.getElementById("analyze"));
+    initPolish();
+  </script>
+</body>
+</html>

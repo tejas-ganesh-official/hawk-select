@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HHO Research Notes</title>
+  <meta name="description" content="Harris Hawks Optimization for selecting network intrusion detection features on NSL-KDD.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/polish.css">
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>Hawk<span>Select</span></a>
+      <nav>
+        <a href="#problem">Problem</a>
+        <a href="#algorithm">Algorithm</a>
+        <a href="#replay">Replay</a>
+        <a href="#results">Results</a>
+      </nav>
+      <a class="btn primary small nav-cta" href="index.html#analyze">Analyze data</a>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="section page-intro">
+      <p class="pill-label"><span class="pulse-dot"></span>Research · NSL-KDD case study</p>
+      <h1 class="page-title">How Harris Hawks select<br><em class="serif">intrusion-detection features.</em></h1>
+      <p class="lede">The study behind the analyzer: binary HHO against GA, PSO and filter methods on the NSL-KDD
+        network-intrusion benchmark, 30 seeds each. <a class="link" href="index.html#analyze">Try it on your own data →</a></p>
+    </section>
+
+    <section id="problem" class="section">
+      <h2><span class="num">01</span> The problem</h2>
+      <p class="section-lede">Why an intrusion detector benefits from fewer, better features.</p>
+      <div class="prose">
+        <p>An intrusion detection system inspects every network connection and decides whether it is normal or an attack.
+        NSL-KDD describes each connection with 41 features: basic header fields, payload content indicators, and
+        traffic statistics over the last two seconds and the last 100 connections to the same host.</p>
+        <p>More features is not automatically better. Many of them are near-duplicates of each other, some never vary,
+        and every extra feature slows the detector and gives a distance-based classifier like KNN more noise to get lost in.
+        Feature selection asks: <strong>which small subset keeps (or improves) detection?</strong> With 41 features there are
+        2<sup>41</sup> ≈ 2.2 trillion subsets, far too many to try, which is where a search heuristic like HHO comes in.</p>
+      </div>
+
+      <div class="kpis" data-p="stats"></div>
+
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-head"><h3>Class mix: train vs test</h3>
+            <span class="hint"><i class="sw" style="--c:var(--accent-2)"></i>KDDTrain+ <i class="sw" style="--c:var(--accent)"></i>KDDTest+</span></div>
+          <div class="classes" data-p="classes"></div>
+          <p class="note">The test set is deliberately harder: remote-to-local (R2L) attacks are 16× more common, and it contains
+            attack types the model never saw in training: <span class="mono small" data-p="novel"></span>.
+            This is why every method scores ~99% on validation but ~80% on test.</p>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Single-feature relevance</h3><span class="hint">mutual information with the attack label</span></div>
+          <div class="group-legend">
+            <span><i class="sw-dot" style="--c:#6b7cff"></i>basic</span><span><i class="sw-dot" style="--c:#a46bff"></i>content</span>
+            <span><i class="sw-dot" style="--c:#2fd6c4"></i>traffic</span><span><i class="sw-dot" style="--c:#ffb347"></i>host</span>
+          </div>
+          <div class="mi-list" data-p="mi"></div>
+        </div>
+      </div>
+
+      <div class="panel heat-panel">
+        <div class="panel-head"><h3>Feature redundancy</h3>
+          <span class="hint">Pearson correlation between every pair of features · <span class="mono" data-p="strong">–</span> pairs with |r| ≥ 0.9 · hover for details</span></div>
+        <div class="heat-layout">
+          <div class="heat" data-p="heat"><canvas aria-label="41 by 41 feature correlation heatmap"></canvas></div>
+          <div class="heat-notes">
+            <div class="ramp"><span>−1</span><i></i><span>+1</span></div>
+            <p>Bright blocks are groups of features that carry the same information, e.g. the four <span class="mono">*serror_rate</span>
+              columns. Keeping one from each block is usually enough, and that is exactly the kind of redundancy
+              a wrapper search should strip out.</p>
+            <p><span class="mono">num_outbound_cmds</span> is zero for every connection; it can never help, and the empty row/column shows it.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="algorithm" class="section">
+      <h2><span class="num">02</span> The algorithm</h2>
+      <p class="section-lede">Escaping energy, four besiege strategies, Lévy dives, and binary transfer functions.</p>
+      <div class="prose">
+        <p>Harris hawks hunt cooperatively: the family perches and scouts, and once a rabbit is spotted they encircle it and
+        take turns diving until it is exhausted. Heidari et al. (2019) turned this into an optimizer. Each hawk is a candidate
+        solution; the <strong>rabbit is the best solution found so far</strong>. A single number, the rabbit's
+        <strong>escaping energy E</strong>, decides how every hawk moves.</p>
+      </div>
+
+      <div class="panel explainer" data-x="energy">
+        <div class="panel-head"><h3>Escaping energy decides the move</h3>
+          <span class="hint">E = 2·E₀·(1 − t/T), with E₀ random in [−1, 1] for every hawk, every iteration</span></div>
+        <div class="energy-layout">
+          <div>
+            <canvas class="chart tall" aria-label="Escaping energy over iterations"></canvas>
+            <div class="sliders">
+              <label>iteration t <output data-o="t"></output><input type="range" name="t" min="0" max="100" value="20"></label>
+              <label>initial energy E₀ <output data-o="e0"></output><input type="range" name="e0" min="-1" max="1" step="0.01" value="0.8"></label>
+              <label>escape chance r <output data-o="r"></output><input type="range" name="r" min="0" max="1" step="0.01" value="0.7"></label>
+              <label>perch choice q <output data-o="q"></output><input type="range" name="q" min="0" max="1" step="0.01" value="0.6"></label>
+            </div>
+            <button class="btn small" data-act="random">Roll random E₀, r, q</button>
+          </div>
+          <div>
+            <div class="tree" role="img" aria-label="Decision tree from escaping energy to one of six strategies">
+              <div class="node root" data-node="root"><b>E = <output data-o="E"></output></b><span>|E| = <output data-o="absE"></output></span></div>
+              <div class="branches two">
+                <div class="branch">
+                  <div class="node" data-node="explore"><b>Exploration</b><span>|E| ≥ 1</span></div>
+                  <div class="branches two">
+                    <div class="node leaf" data-node="s0" style="--c:#6b7cff"><b>Perch: random hawk</b><span>q ≥ 0.5</span></div>
+                    <div class="node leaf" data-node="s1" style="--c:#a46bff"><b>Perch: family mean</b><span>q &lt; 0.5</span></div>
+                  </div>
+                </div>
+                <div class="branch">
+                  <div class="node" data-node="exploit"><b>Exploitation</b><span>|E| &lt; 1</span></div>
+                  <div class="branches two">
+                    <div class="branch">
+                      <div class="node" data-node="besiege"><b>Besiege</b><span>r ≥ 0.5</span></div>
+                      <div class="node leaf" data-node="s2" style="--c:#2fd6c4"><b>Soft besiege</b><span>|E| ≥ 0.5</span></div>
+                      <div class="node leaf" data-node="s3" style="--c:#ffb347"><b>Hard besiege</b><span>|E| &lt; 0.5</span></div>
+                    </div>
+                    <div class="branch">
+                      <div class="node" data-node="dive"><b>Rapid dives</b><span>r &lt; 0.5</span></div>
+                      <div class="node leaf" data-node="s4" style="--c:#3cf08a"><b>Soft + rapid dives</b><span>|E| ≥ 0.5</span></div>
+                      <div class="node leaf" data-node="s5" style="--c:#ff4d6d"><b>Hard + rapid dives</b><span>|E| &lt; 0.5</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="active-strategy">
+              <span class="label">Active strategy</span>
+              <strong data-o="name"></strong>
+              <p class="formula mono" data-o="formula"></p>
+              <p data-o="plain"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="panel explainer" data-x="levy">
+          <div class="panel-head"><h3>Lévy flight vs random walk</h3><button class="btn small" data-act="levy">New walk</button></div>
+          <div class="walks">
+            <figure><canvas aria-label="Gaussian random walk"></canvas><figcaption><i class="sw" style="--c:var(--accent-2)"></i>Gaussian steps</figcaption></figure>
+            <figure><canvas aria-label="Levy flight"></canvas><figcaption><i class="sw" style="--c:var(--accent)"></i>Lévy steps (β = 1.5)</figcaption></figure>
+          </div>
+          <p class="note">Same number of steps, same random directions. Lévy step lengths have a heavy tail: mostly tiny moves
+            around one spot, with an occasional long jump to a new region. HHO's rapid dives use them so a hawk that is
+            stuck near the rabbit can still leap out of a local optimum.</p>
+        </div>
+
+        <div class="panel explainer" data-x="transfer">
+          <div class="panel-head"><h3>From positions to feature bits</h3>
+            <span class="hint"><i class="sw" style="--c:var(--accent-2)"></i>S(x) = 1/(1+e<sup>−x</sup>) <i class="sw" style="--c:var(--accent)"></i>V(x) = |tanh x|</span></div>
+          <canvas class="chart" aria-label="S-shaped and V-shaped transfer functions"></canvas>
+          <div class="sliders one">
+            <label>continuous value x <output data-o="x"></output><input type="range" name="x" min="-6" max="6" step="0.05" value="1.2"></label>
+          </div>
+          <div class="bitrows">
+            <div><span class="label">S-shaped: P(bit = 1) = <output data-o="S"></output> → <output data-o="onS"></output>/41 on</span><div class="bits" data-o="bitsS"></div></div>
+            <div><span class="label">V-shaped: P(flip) = <output data-o="V"></output> → <output data-o="flips"></output> flips</span><div class="bits" data-o="bitsV"></div></div>
+          </div>
+          <button class="btn small" data-act="resample">Resample bits</button>
+          <p class="note">HHO moves hawks through continuous space, but a feature is either in or out. The S-shaped function treats
+            a position as the probability of a 1; the V-shaped one, applied to the step size, flips bits only when a hawk actually moves,
+            so the search can settle as the besiege tightens. Outlined bits are flips.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="replay" class="section">
+      <h2><span class="num">03</span> Watch it select features</h2>
+      <p class="section-lede">A replay of a real run: hawks × 41 NSL-KDD features, bit by bit.</p>
+      <div class="replay" id="replay-viewer" tabindex="0" aria-label="Replay viewer. Space plays or pauses, arrow keys step.">
+        <p class="replay-status" data-r="status">Loading run…</p>
+
+        <div class="replay-bar">
+          <span class="replay-title mono" data-r="title"></span>
+          <div class="replay-controls">
+            <button class="btn small icon" data-r="prev" aria-label="Previous iteration">‹</button>
+            <button class="btn small primary" data-r="play" aria-pressed="false">Play</button>
+            <button class="btn small icon" data-r="next" aria-label="Next iteration">›</button>
+            <input class="scrub" type="range" min="0" value="0" step="1" data-r="slider" aria-label="Iteration">
+            <select class="speed" data-r="speed" aria-label="Playback speed">
+              <option value="0.5">0.5×</option><option value="1" selected>1×</option>
+              <option value="2">2×</option><option value="4">4×</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="replay-main">
+          <div class="panel grid-panel">
+            <div class="panel-head">
+              <h3>Hawks × features</h3>
+              <span class="hint">teal = feature used · <span class="accent">amber</span> = best-so-far · outlines flash on bit flips</span>
+            </div>
+            <div class="grid-wrap">
+              <canvas data-r="grid"></canvas>
+              <div class="tip" data-r="tip" hidden></div>
+            </div>
+          </div>
+
+          <aside class="panel stats-panel">
+            <div class="stat"><span class="label">Iteration</span><strong class="mono" data-r="iter">0</strong></div>
+            <div class="stat"><span class="label">Best fitness</span><strong class="mono" data-r="best">–</strong></div>
+            <div class="stat"><span class="label">Features in best</span><strong class="mono" data-r="nsel">–</strong></div>
+            <div class="stat"><span class="label">Max |E|</span><strong class="mono" data-r="emax">2.00</strong></div>
+            <h4>Strategy this iteration</h4>
+            <ul class="legend" data-r="legend"></ul>
+          </aside>
+        </div>
+
+        <div class="replay-charts">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Convergence</h3>
+              <span class="hint"><i class="sw" style="--c:var(--accent)"></i>best <i class="sw dash"></i>population mean <i class="sw" style="--c:var(--accent-2)"></i>features in best (right axis)</span>
+            </div>
+            <canvas class="chart" data-r="conv"></canvas>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Escaping energy E per hawk</h3>
+              <span class="hint">dashed = ±2(1 − t/T) envelope · |E| ≥ 1 explores · |E| &lt; 0.5 hard besiege</span>
+            </div>
+            <canvas class="chart" data-r="energy"></canvas>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Selected features</h3><span class="hint">best-so-far subset, live</span></div>
+          <div class="chips" data-r="chips"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Final subset on KDDTest+</h3><span class="hint">KNN (k=5), compared with all 41 features</span></div>
+          <div class="metrics" data-r="metrics"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="results" class="section">
+      <h2><span class="num">04</span> Results</h2>
+      <p class="section-lede">HHO against GA, PSO, filter methods and all-features, over 30 seeds.</p>
+      <div class="prose">
+        <p>Every method optimises the same objective, <span class="mono">0.99 · validation error + 0.01 · features/41</span>,
+        with the same KNN classifier and the same population (20) and iterations (100). Each was run with 30 different seeds;
+        the final subset is then scored on the unseen KDDTest+ set.</p>
+      </div>
+
+      <div class="callouts">
+        <div class="callout"><strong>GA optimises the objective best</strong><span>lowest fitness, with the fewest evaluations</span></div>
+        <div class="callout"><strong>HHO-S generalises best of the search methods</strong><span>highest test accuracy and detection among HHO, GA, PSO</span></div>
+        <div class="callout"><strong>A 5-feature MI filter beats them all on test</strong><span>KDDTest+'s unseen attacks reward small, general subsets</span></div>
+      </div>
+
+      <div class="toggles" data-res="toggles" aria-label="Show or hide methods"></div>
+
+      <div class="panel table-panel" data-res="table"></div>
+
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-head"><h3>Convergence</h3><span class="hint">mean best fitness, band = ±1 std over 30 seeds</span></div>
+          <div class="chart-host" data-res="conv"><canvas class="chart tall"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Features vs test accuracy</h3><span class="hint">every run · + = method mean · dashed = Pareto front</span></div>
+          <div class="chart-host" data-res="pareto"><canvas class="chart tall"></canvas></div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-head"><h3>Trade-off profile</h3><span class="hint">each axis scaled across methods · hover a name</span></div>
+          <div class="chart-host radar-host" data-res="radar"><canvas class="chart tall"></canvas><ul class="radar-legend"></ul></div>
+        </div>
+        <div class="panel">
+          <div data-res="cm">
+            <div class="panel-head"><h3>Confusion matrix on KDDTest+</h3><select class="speed" aria-label="Method"></select></div>
+            <div class="cm-grid"></div>
+          </div>
+          <p class="note">Row-normalised, averaged over seeds; deltas are against using all 41 features. Missed attacks
+            (attack → normal) are the costly error in intrusion detection.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Which features get picked</h3>
+          <span class="hint">share of 30 runs that kept each feature, sorted by how often the metaheuristics agree</span></div>
+        <div class="group-legend">
+          <span><i class="sw-dot" style="--c:#6b7cff"></i>basic</span><span><i class="sw-dot" style="--c:#a46bff"></i>content</span>
+          <span><i class="sw-dot" style="--c:#2fd6c4"></i>traffic</span><span><i class="sw-dot" style="--c:#ffb347"></i>host</span>
+        </div>
+        <div class="chart-host" data-res="freq"><canvas class="strip"></canvas></div>
+      </div>
+    </section>
+
+    <section id="about" class="section">
+      <h2><span class="num">05</span> About</h2>
+      <p class="section-lede">Team, references and source code.</p>
+      <ul class="refs">
+        <li>Heidari, A. A. et al. (2019). Harris hawks optimization: Algorithm and applications. <em>Future Generation Computer Systems</em>, 97, 849–872.</li>
+        <li>Tavallaee, M. et al. (2009). A detailed analysis of the KDD CUP 99 data set. <em>IEEE CISDA</em>.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true"></span>Hawk<span>Select</span></a>
+      <p>A bio-inspired algorithms course project. Built on Harris Hawks Optimization (Heidari et&nbsp;al., 2019).</p>
+      <nav><a href="index.html#analyze">Analyzer</a><a href="#algorithm">Algorithm</a><a href="#results">Results</a></nav>
+    </div>
+    <p class="fine">No tracking. No uploads. Everything runs on your device.</p>
+  </footer>
+
+  <script type="module">
+    import { initReplay } from "./js/replay.js";
+    import { initProblem } from "./js/problem.js";
+    import { initExplainers } from "./js/explain.js";
+    import { initResults } from "./js/results.js";
+    initProblem(document.getElementById("problem"));
+    initExplainers(document.getElementById("algorithm"));
+    initReplay(document.getElementById("replay-viewer"));
+    initResults(document.getElementById("results"));
+    import("./js/polish.js").then((m) => m.initPolish());
+  </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+data/raw/
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+
+# scratch outputs from before the final sweep (results/sweep is the real data)
+results/runs/
+results/smoke/
+results/*.log
+results/log_*.txt

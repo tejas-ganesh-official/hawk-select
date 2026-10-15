@@ -1,0 +1,20 @@
+[
+ {
+  "file": "nsl_kdd_3000.csv",
+  "name": "NSL-KDD network traffic",
+  "desc": "3,000 connections · 41 features · normal vs attack",
+  "target": "label"
+ },
+ {
+  "file": "breast_cancer.csv",
+  "name": "Breast cancer (Wisconsin)",
+  "desc": "569 biopsies · 30 cell measurements · malignant vs benign",
+  "target": "diagnosis"
+ },
+ {
+  "file": "wine.csv",
+  "name": "Wine cultivars",
+  "desc": "178 wines · 13 chemical measurements · 3 cultivars",
+  "target": "cultivar"
+ }
+]
